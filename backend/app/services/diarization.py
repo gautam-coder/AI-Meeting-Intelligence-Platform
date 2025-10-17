@@ -75,7 +75,21 @@ def apply_diarization(input_path: str, segments: List[dict]) -> None:
 
     if pipeline is not None:
         try:
-            diar = pipeline(input_path)
+            kwargs = {}
+            if settings.diarization_num_speakers is not None:
+                kwargs["num_speakers"] = settings.diarization_num_speakers
+            if settings.diarization_min_speakers is not None:
+                kwargs["min_speakers"] = settings.diarization_min_speakers
+            if settings.diarization_max_speakers is not None:
+                kwargs["max_speakers"] = settings.diarization_max_speakers
+            try:
+                diar = pipeline(input_path, **kwargs)
+            except TypeError:
+                # Fallback: try only num_speakers when supported
+                basic = {}
+                if "num_speakers" in kwargs:
+                    basic["num_speakers"] = kwargs["num_speakers"]
+                diar = pipeline(input_path, **basic)
             _assign_by_overlap(segments, diar)
         except Exception:
             pass

@@ -86,6 +86,18 @@ class Settings(BaseSettings):
         default=os.environ.get("HF_TOKEN"),
         validation_alias=AliasChoices("HF_TOKEN", "huggingface_token"),
     )
+    diarization_num_speakers: Optional[int] = Field(
+        default=(int(os.environ.get("DIARIZATION_NUM_SPEAKERS")) if os.environ.get("DIARIZATION_NUM_SPEAKERS") else None),
+        validation_alias=AliasChoices("DIARIZATION_NUM_SPEAKERS", "diarization_num_speakers"),
+    )
+    diarization_min_speakers: Optional[int] = Field(
+        default=(int(os.environ.get("DIARIZATION_MIN_SPEAKERS")) if os.environ.get("DIARIZATION_MIN_SPEAKERS") else None),
+        validation_alias=AliasChoices("DIARIZATION_MIN_SPEAKERS", "diarization_min_speakers"),
+    )
+    diarization_max_speakers: Optional[int] = Field(
+        default=(int(os.environ.get("DIARIZATION_MAX_SPEAKERS")) if os.environ.get("DIARIZATION_MAX_SPEAKERS") else None),
+        validation_alias=AliasChoices("DIARIZATION_MAX_SPEAKERS", "diarization_max_speakers"),
+    )
 
     # Ollama
     ollama_base_url: str = Field(

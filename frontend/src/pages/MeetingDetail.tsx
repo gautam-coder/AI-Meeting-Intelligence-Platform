@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../api/client'
 import { SectionCard, Pill, Empty } from '../components/ui'
+import { LineChart, BarChart, SpeakerTimeline } from '../components/charts'
 import type { SearchHit } from '../api/types'
 
 export default function MeetingDetail() {
@@ -52,6 +53,23 @@ export default function MeetingDetail() {
     topics: safeJsonArray(data?.summary?.key_topics),
     sentiment: safeJsonObject(data?.summary?.sentiment_overview),
   }), [data])
+  const sentimentSeries = useMemo(() => {
+    const arr = (data?.sentiments || []) as any[]
+    if (!arr.length) return [] as {x:number,y:number}[]
+    return arr.map(s => ({ x: (s.start + s.end)/2, y: s.score }))
+  }, [data])
+  const topicBars = useMemo(() => {
+    const arr = safeJsonArray(data?.summary?.key_topics)
+    // Map to labels and pseudo confidence if not present
+    return arr.slice(0,8).map((t:any) => ({ label: typeof t === 'string' ? t : (t.label || ''), conf: typeof t === 'string' ? 0.8 : (t.confidence ?? 0.8) }))
+  }, [data])
+  const speakerInfo = useMemo(() => {
+    const segs = (data?.segments || []) as any[]
+    const counts: Record<string, number> = {}
+    segs.forEach(s => { const sp = s.speaker || 'Speaker'; counts[sp] = (counts[sp]||0) + (s.end - s.start) })
+    const speakers = Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([label, dur])=>({label, dur}))
+    return { speakers, total: speakers.reduce((a,b)=>a+b.dur,0) }
+  }, [data])
 
   if (!data) return <div>Loading...</div>
 
@@ -111,6 +129,12 @@ export default function MeetingDetail() {
               {items.sentiment.rationale && (
                 <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{items.sentiment.rationale}</div>
               )}
+              {sentimentSeries.length > 0 && (
+                <div className="mt-3">
+                  <div className="text-xs text-gray-500 mb-1">Sentiment over time</div>
+                  <LineChart points={sentimentSeries} />
+                </div>
+              )}
               {Array.isArray(items.sentiment.highlights) && items.sentiment.highlights.length > 0 && (
                 <div className="mt-2">
                   <div className="text-xs font-medium mb-1">Highlights</div>
@@ -124,6 +148,15 @@ export default function MeetingDetail() {
                   </ul>
                 </div>
               )}
+            </SectionCard>
+            <SectionCard title="Speakers" subtitle={`${speakerInfo.speakers.length} participants`} dense>
+              <div className="text-xs text-gray-500 mb-2">Speaking timeline</div>
+              <SpeakerTimeline segments={(data?.segments || []).map((s:any)=>({start:s.start,end:s.end,speaker:s.speaker||'Speaker'}))} />
+              <div className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1">
+                {speakerInfo.speakers.map((s,i)=>(
+                  <div key={i} className="text-xs text-gray-700 truncate">{s.label} • {Math.round(s.dur)}s</div>
+                ))}
+              </div>
             </SectionCard>
           </div>
         </div>

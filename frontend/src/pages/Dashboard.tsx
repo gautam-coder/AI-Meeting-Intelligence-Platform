@@ -3,11 +3,19 @@ import { Link } from 'react-router-dom'
 import { api } from '../api/client'
 import type { Meeting, SearchHit } from '../api/types'
 import { SectionCard, Pill, Empty } from '../components/ui'
+import { HStackBar, BarChart } from '../components/charts'
 
 export default function Dashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([])
   const [query, setQuery] = useState('')
   const [hits, setHits] = useState<SearchHit[]>([])
+  const statusParts = (() => {
+    const m: Record<string, number> = {}
+    meetings.forEach(x => m[x.status] = (m[x.status]||0)+1)
+    const colors: Record<string,string> = { ready:'#16a34a', uploaded:'#f59e0b', created:'#64748b', error:'#ef4444' }
+    return Object.entries(m).map(([label,value])=>({label, value, color: colors[label] || '#94a3b8'}))
+  })()
+  const durationValues = meetings.map(m => Math.max(1, Math.round(m.duration_seconds/60)))
 
   useEffect(() => {
     api.get('/api/meetings').then(r => setMeetings(r.data))
@@ -46,6 +54,23 @@ export default function Dashboard() {
         ) : (
           <div className="mt-3"><Empty hint="Try a keyword like ‘budget’, ‘timeline’, or ‘risk’." /></div>
         )}
+      </SectionCard>
+      <SectionCard title="Overview" subtitle="Status and duration distribution" >
+        <div className="grid md:grid-cols-3 gap-4 items-center">
+          <div className="col-span-2">
+            <div className="text-xs text-gray-500 mb-1">By status</div>
+            <HStackBar parts={statusParts} />
+            <div className="mt-2 flex gap-3 flex-wrap">
+              {statusParts.map((p,i)=>(
+                <div key={i} className="text-xs text-gray-600 flex items-center gap-1"><span className="w-2 h-2 rounded-full" style={{background:p.color}} /> {p.label}: {p.value}</div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs text-gray-500 mb-1">Durations (min)</div>
+            <BarChart values={durationValues.slice(0,12)} />
+          </div>
+        </div>
       </SectionCard>
       <SectionCard title="Recent Meetings" subtitle="Latest processed recordings.">
         {meetings.length === 0 ? (
